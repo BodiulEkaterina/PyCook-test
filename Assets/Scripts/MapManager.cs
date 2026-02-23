@@ -22,18 +22,30 @@ public class MapManager : MonoBehaviour
     public Button levelButton15;
     public Button levelButton16;
     public Button levelButton17;
+    public Button levelButton18;
+    public Button levelButton19;
+    public Button levelButton20;
     public Button backButton;
+
+    // КНОПКА ОЧИСТКИ ПРОГРЕССА
+    public Button resetProgressButton;
+
+    // ПРЕФАБ ПАНЕЛИ ПОДТВЕРЖДЕНИЯ
+    public GameObject confirmPanelPrefab;
 
     // Цвета для кнопок
     public Color lockedColor = Color.gray;
     public Color unlockedColor = new Color(0.2f, 0.6f, 1f); // Синий
     public Color passedColor = Color.green;
 
+    // ПЕРЕМЕННЫЕ
+    private GameObject currentConfirmPanel;
+
     void Start()
     {
         Debug.Log("=== MAP MANAGER ЗАПУЩЕН ===");
 
-        // ИНИЦИАЛИЗАЦИЯ ПРОГРЕССА (если первый запуск)
+        // ИНИЦИАЛИЗАЦИЯ ПРОГРЕССА
         InitializeProgress();
 
         // Показываем текущий прогресс в консоли
@@ -46,6 +58,12 @@ public class MapManager : MonoBehaviour
         if (backButton != null)
         {
             backButton.onClick.AddListener(GoToMenu);
+        }
+
+        // КНОПКА ОЧИСТКИ ПРОГРЕССА
+        if (resetProgressButton != null)
+        {
+            resetProgressButton.onClick.AddListener(ShowConfirmPanel);
         }
     }
 
@@ -61,32 +79,11 @@ public class MapManager : MonoBehaviour
             PlayerPrefs.SetInt("Level1_Passed", 0); // 0 = не пройден
 
             // Остальные закрыты
-            PlayerPrefs.SetInt("Level2_Status", 0); // 0 = закрыт
-            PlayerPrefs.SetInt("Level2_Passed", 0);
-
-            PlayerPrefs.SetInt("Level3_Status", 0);
-            PlayerPrefs.SetInt("Level3_Passed", 0);
-
-            PlayerPrefs.SetInt("Level4_Status", 0);
-            PlayerPrefs.SetInt("Level4_Passed", 0);
-
-            PlayerPrefs.SetInt("Level5_Status", 0);
-            PlayerPrefs.SetInt("Level5_Passed", 0);
-
-            PlayerPrefs.SetInt("Level6_Status", 0);
-            PlayerPrefs.SetInt("Level6_Passed", 0);
-
-            PlayerPrefs.SetInt("Level757_Status", 0);
-            PlayerPrefs.SetInt("Level7_Passed", 0);
-
-            PlayerPrefs.SetInt("Level8_Status", 0);
-            PlayerPrefs.SetInt("Level8_Passed", 0);
-
-            PlayerPrefs.SetInt("Level9_Status", 0);
-            PlayerPrefs.SetInt("Level9_Passed", 0);
-
-            PlayerPrefs.SetInt("Level10_Status", 0);
-            PlayerPrefs.SetInt("Level10_Passed", 0);
+            for (int i = 2; i <= 17; i++)
+            {
+                PlayerPrefs.SetInt($"Level{i}_Status", 0);
+                PlayerPrefs.SetInt($"Level{i}_Passed", 0);
+            }
 
             PlayerPrefs.SetInt("GameInitialized", 1);
             PlayerPrefs.Save();
@@ -98,7 +95,7 @@ public class MapManager : MonoBehaviour
     void ShowProgressDebug()
     {
         Debug.Log("=== ТЕКУЩИЙ ПРОГРЕСС ===");
-        for (int i = 1; i <= 17; i++)
+        for (int i = 1; i <= 20; i++)
         {
             int status = PlayerPrefs.GetInt($"Level{i}_Status", 0);
             int passed = PlayerPrefs.GetInt($"Level{i}_Passed", 0);
@@ -130,6 +127,9 @@ public class MapManager : MonoBehaviour
         SetupButton(levelButton15, 15);
         SetupButton(levelButton16, 16);
         SetupButton(levelButton17, 17);
+        SetupButton(levelButton18, 18);
+        SetupButton(levelButton19, 19);
+        SetupButton(levelButton20, 20);
     }
 
     void SetupButton(Button button, int levelNumber)
@@ -143,8 +143,6 @@ public class MapManager : MonoBehaviour
         // Получаем статус уровня
         int status = PlayerPrefs.GetInt($"Level{levelNumber}_Status", 0);
         int passed = PlayerPrefs.GetInt($"Level{levelNumber}_Passed", 0);
-
-        Debug.Log($"Настройка кнопки уровня {levelNumber}: статус={status}, пройден={passed}");
 
         if (status == 1) // Уровень открыт
         {
@@ -174,8 +172,6 @@ public class MapManager : MonoBehaviour
             // Назначаем действие
             button.onClick.RemoveAllListeners();
             button.onClick.AddListener(() => LoadLevel(levelNumber));
-
-            Debug.Log($"Уровень {levelNumber}: ОТКРЫТ (пройден: {passed == 1})");
         }
         else // Уровень закрыт
         {
@@ -192,8 +188,6 @@ public class MapManager : MonoBehaviour
             {
                 buttonImage.color = lockedColor;
             }
-
-            Debug.Log($"Уровень {levelNumber}: ЗАКРЫТ");
         }
     }
 
@@ -201,7 +195,7 @@ public class MapManager : MonoBehaviour
     {
         Debug.Log($"Загружаем уровень {levelNumber}");
 
-        // Сохраняем выбранный уровень (на всякий случай)
+        // Сохраняем выбранный уровень
         PlayerPrefs.SetInt("SelectedLevel", levelNumber);
         PlayerPrefs.Save();
 
@@ -238,6 +232,36 @@ public class MapManager : MonoBehaviour
             case 10:
                 SceneManager.LoadScene("Level10");
                 break;
+            case 11:
+                SceneManager.LoadScene("Level11");
+                break;
+            case 12:
+                SceneManager.LoadScene("Level12");
+                break;
+            case 13:
+                SceneManager.LoadScene("Level13");
+                break;
+            case 14:
+                SceneManager.LoadScene("Level14");
+                break;
+            case 15:
+                SceneManager.LoadScene("Level15");
+                break;
+            case 16:
+                SceneManager.LoadScene("Level16");
+                break;
+            case 17:
+                SceneManager.LoadScene("Level17");
+                break;
+            case 18:
+                SceneManager.LoadScene("Level18");
+                break;
+            case 19:
+                SceneManager.LoadScene("Level19");
+                break;
+            case 20:
+                SceneManager.LoadScene("Level20");
+                break;
             default:
                 Debug.LogError($"Неизвестный уровень: {levelNumber}");
                 break;
@@ -249,6 +273,105 @@ public class MapManager : MonoBehaviour
         SceneManager.LoadScene("MenuScene");
     }
 
+    // ПОКАЗАТЬ ПАНЕЛЬ ПОДТВЕРЖДЕНИЯ
+    void ShowConfirmPanel()
+    {
+        if (confirmPanelPrefab == null)
+        {
+            Debug.LogError("confirmPanelPrefab не назначен!");
+            return;
+        }
+
+        // Если уже есть открытая панель - закрываем её
+        if (currentConfirmPanel != null)
+        {
+            Destroy(currentConfirmPanel);
+        }
+
+        // Создаём панель
+        currentConfirmPanel = Instantiate(confirmPanelPrefab);
+        currentConfirmPanel.transform.SetParent(GameObject.Find("Canvas").transform, false);
+
+        // Находим кнопки в префабе
+        Button yesButton = FindButtonInChildren(currentConfirmPanel, "YesButton");
+        Button noButton = FindButtonInChildren(currentConfirmPanel, "NoButton");
+
+        // Назначаем действия
+        if (yesButton != null)
+        {
+            yesButton.onClick.AddListener(ResetProgress);
+        }
+
+        if (noButton != null)
+        {
+            noButton.onClick.AddListener(CloseConfirmPanel);
+        }
+
+        // Находим текст
+        Text confirmText = FindTextInChildren(currentConfirmPanel);
+        if (confirmText != null)
+        {
+            confirmText.text = "Точно сбросить весь прогресс?\nВсе уровни будут закрыты, кроме первого.";
+        }
+    }
+
+    // ЗАКРЫТЬ ПАНЕЛЬ ПОДТВЕРЖДЕНИЯ
+    void CloseConfirmPanel()
+    {
+        if (currentConfirmPanel != null)
+        {
+            Destroy(currentConfirmPanel);
+            currentConfirmPanel = null;
+        }
+    }
+
+    // СБРОСИТЬ ПРОГРЕСС
+    void ResetProgress()
+    {
+        Debug.Log("СБРАСЫВАЮ ВЕСЬ ПРОГРЕСС");
+
+        // Удаляем все сохранения
+        PlayerPrefs.DeleteAll();
+        PlayerPrefs.Save();
+
+        Debug.Log("Прогресс сброшен");
+
+        // Закрываем панель
+        CloseConfirmPanel();
+
+        // Перезагружаем карту
+        SceneManager.LoadScene("MapScene");
+    }
+
+    // ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ДЛЯ ПОИСКА
+    Button FindButtonInChildren(GameObject parent, string buttonName)
+    {
+        Transform[] allChildren = parent.GetComponentsInChildren<Transform>(true);
+        foreach (Transform child in allChildren)
+        {
+            if (child.name == buttonName)
+            {
+                return child.GetComponent<Button>();
+            }
+        }
+        return null;
+    }
+
+    Text FindTextInChildren(GameObject parent)
+    {
+        Text[] allTexts = parent.GetComponentsInChildren<Text>(true);
+        foreach (Text text in allTexts)
+        {
+            // Пропускаем текст на кнопках
+            if (text.transform.parent != null && text.transform.parent.GetComponent<Button>() != null)
+            {
+                continue;
+            }
+            return text;
+        }
+        return null;
+    }
+
     // ОБНОВЛЕНИЕ ПРОГРЕССА ПОСЛЕ ПРОХОЖДЕНИЯ УРОВНЯ
     public static void MarkLevelAsPassed(int levelNumber)
     {
@@ -258,7 +381,7 @@ public class MapManager : MonoBehaviour
         PlayerPrefs.SetInt($"Level{levelNumber}_Passed", 1);
 
         // Открываем следующий уровень (если он есть)
-        if (levelNumber < 17)
+        if (levelNumber < 20)
         {
             int nextLevel = levelNumber + 1;
             PlayerPrefs.SetInt($"Level{nextLevel}_Status", 1); // Открываем следующий
@@ -269,16 +392,5 @@ public class MapManager : MonoBehaviour
 
         // Выводим отладку
         Debug.Log($"Уровень {levelNumber} пройден! Сохранено.");
-    }
-
-    public void ResetProgress()
-    {
-        Debug.Log("СБРАСЫВАЮ ВЕСЬ ПРОГРЕСС");
-        PlayerPrefs.DeleteAll();
-        PlayerPrefs.Save();
-        Debug.Log("Прогресс сброшен");
-
-        // Перезагружаем карту
-        SceneManager.LoadScene("MapScene");
     }
 }

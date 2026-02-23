@@ -3,7 +3,7 @@ using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using System.Collections;
 
-public class Level5Manager : MonoBehaviour
+public class Level8Manager : MonoBehaviour
 {
     // ОСНОВНЫЕ ОБЪЕКТЫ
     public RectTransform pyBot;
@@ -13,8 +13,8 @@ public class Level5Manager : MonoBehaviour
     public RectTransform fridgeFront;
     public RectTransform startPoint;
 
-    // ПРЕДМЕТЫ
-    public Image tomatoOnTable;
+    // ПРЕДМЕТЫ (5 ПОМИДОРОВ)
+    public Image[] tomatoes;
     public Image heldItemImage;
 
     // UI ЭЛЕМЕНТЫ
@@ -33,42 +33,51 @@ public class Level5Manager : MonoBehaviour
     // НАСТРОЙКИ
     public float moveSpeed = 300f;
 
-    // ПРАВИЛЬНЫЙ КОД ДЛЯ УРОВНЯ (в виде массива команд)
+    // ПРАВИЛЬНЫЙ КОД ДЛЯ УРОВНЯ
     private string[] expectedCommands = new string[]
     {
-        "move_to(\"table\")",
-        "take(\"tomato\")",
-        "move_to(\"fridge\")"
+        "for i in range(5):",
+        "    if has(\"tomato\"):",
+        "        move_to(\"fridge\")",
+        "    else:",
+        "        move_to(\"table\")",
+        "        take(\"tomato\")"
     };
 
     // ПЕРЕМЕННЫЕ
     private bool isExecuting = false;
     private bool hasTomato = false;
+    private int tomatoesOnTable = 5;
     private GameObject currentInstructionPanel;
     private GameObject currentSuccessPanel;
-    private int currentLevel = 5;
+    private int currentLevel = 8;
 
     void Start()
     {
-        Debug.Log("Level 5 Manager запущен");
+        Debug.Log("Level 8 Manager запущен");
 
-        // Назначаем обработчики кнопок
         runButton.onClick.AddListener(OnRunClick);
         resetButton.onClick.AddListener(OnResetClick);
         backToMapButton.onClick.AddListener(GoToMap);
         instructionButton.onClick.AddListener(ShowInstruction);
 
-        // Скрываем инвентарь
         if (heldItemImage != null)
         {
             heldItemImage.gameObject.SetActive(false);
         }
 
-        // Если нет точек перед объектами, используем сами объекты
+        if (tomatoes == null || tomatoes.Length < 5)
+        {
+            Debug.LogError("Нужно 5 помидоров для уровня 8!");
+        }
+        else
+        {
+            tomatoesOnTable = tomatoes.Length;
+        }
+
         if (tableFront == null) tableFront = table;
         if (fridgeFront == null) fridgeFront = fridge;
 
-        // Показываем инструкцию
         ShowInstruction();
     }
 
@@ -76,71 +85,51 @@ public class Level5Manager : MonoBehaviour
     {
         if (instructionPanelPrefab == null)
         {
-            consoleText.text = "ИНСТРУКЦИЯ: Создай программу из трёх команд";
+            consoleText.text = "ИНСТРУКЦИЯ: Используй цикл с условием";
             return;
         }
 
-        // Создаём панель инструкции
         currentInstructionPanel = Instantiate(instructionPanelPrefab);
         currentInstructionPanel.transform.SetParent(GameObject.Find("Canvas").transform, false);
 
-        // НАХОДИМ КНОПКУ СТАРТА
         Button startButton = FindButtonInChildren(currentInstructionPanel, "StartButton");
-        if (startButton == null)
-        {
-            startButton = currentInstructionPanel.GetComponentInChildren<Button>();
-        }
-
         if (startButton != null)
         {
-            // Настраиваем текст кнопки
             Text buttonText = startButton.GetComponentInChildren<Text>();
-            if (buttonText != null)
-            {
-                buttonText.text = "НАЧАТЬ";
-            }
+            if (buttonText != null) buttonText.text = "НАЧАТЬ";
 
-            // Назначаем действие для кнопки
             startButton.onClick.RemoveAllListeners();
-            startButton.onClick.AddListener(() => {
-                CloseInstruction();
-            });
+            startButton.onClick.AddListener(() => CloseInstruction());
         }
 
-        // ЗАПОЛНЯЕМ ТЕКСТОВЫЕ ПОЛЯ
         Text[] allTexts = currentInstructionPanel.GetComponentsInChildren<Text>(true);
 
         foreach (Text text in allTexts)
         {
-            // Пропускаем текст на кнопках
             if (text.transform.parent != null && text.transform.parent.GetComponent<Button>() != null)
-            {
                 continue;
-            }
 
             string textName = text.gameObject.name.ToLower();
 
             if (textName.Contains("main") || textName.Contains("instruction"))
             {
-                text.text = "Создай полную программу из трёх команд.\n\nPyBot должен выполнить путь: стол - помидор - холодильник.\n\nПиши опираясь на пример.";
+                text.text = "На столе 5 помидоров. Нужно перенести их все в холодильник.\n\nИспользуй цикл for с условием:\nЕсли в руках есть помидор - нести к холодильнику\nЕсли нет помидора - идти к столу и взять\n\nПример будет не полным, опирайся на полученнные знания.";
             }
             else if (textName.Contains("example") || textName.Contains("code"))
             {
-                text.text = "Пиши в поле справа:\nmove_to(\"table\")\ntake(\"tomato\")\nmove_to(\"fridge\")";
+                text.text = "Пиши в поле справа:\nfor i in range(5):\n    if has(\"tomato\"):\n        move_to(\"fridge\")\n    else:\n        move_to(\"table\")\n        take(\"tomato\")";
             }
         }
 
-        // ЗАПОЛНЯЕМ ПОЛЯ ВВОДА
         InputField[] allInputFields = currentInstructionPanel.GetComponentsInChildren<InputField>(true);
         foreach (InputField inputField in allInputFields)
         {
             if (inputField.gameObject.name.ToLower().Contains("example"))
             {
-                inputField.text = "move_to(\"table\")\ntake(\"tomato\")\nmove_to(\"fridge\")";
+                inputField.text = "for i in range(5):\n    if has(\"...\"):\n        ...(\"...\")\n    else:\n        move_to(\"table\")\n        ...(\"...\")";
             }
         }
 
-        // Блокируем игровой процесс
         runButton.interactable = false;
         codeInput.interactable = false;
         resetButton.interactable = false;
@@ -166,7 +155,6 @@ public class Level5Manager : MonoBehaviour
             Destroy(currentInstructionPanel);
         }
 
-        // Разблокируем игровой процесс
         runButton.interactable = true;
         codeInput.interactable = true;
         resetButton.interactable = true;
@@ -207,49 +195,71 @@ public class Level5Manager : MonoBehaviour
             consoleText.text = "Код правильный! Выполняю программу...";
             yield return new WaitForSeconds(1f);
 
-            // 1. Идём к столу
-            consoleText.text = "Иду к столу...";
-            yield return StartCoroutine(MovePyBotTo(tableFront.anchoredPosition));
-
-            // 2. Берём помидор
-            consoleText.text = "Беру помидор...";
-            yield return new WaitForSeconds(0.5f);
-
-            // Прячем помидор со стола
-            if (tomatoOnTable != null)
+            // Выполняем 5 итераций цикла
+            for (int iteration = 0; iteration < 10; iteration++)
             {
-                tomatoOnTable.gameObject.SetActive(false);
+                consoleText.text = $"Итерация {iteration + 1} из 10...";
+                yield return new WaitForSeconds(0.5f);
+
+                // Проверяем, есть ли помидор в руках
+                if (hasTomato)
+                {
+                    consoleText.text = "У меня есть помидор! Несу к холодильнику...";
+                    yield return StartCoroutine(MovePyBotTo(fridgeFront.anchoredPosition));
+
+                    heldItemImage.gameObject.SetActive(false);
+                    hasTomato = false;
+
+                    consoleText.text = "Помидор доставлен!";
+                    yield return new WaitForSeconds(0.5f);
+                }
+                else
+                {
+                    consoleText.text = "Нет помидора. Иду к столу...";
+                    yield return StartCoroutine(MovePyBotTo(tableFront.anchoredPosition));
+
+                    // Находим первый активный помидор
+                    bool foundTomato = false;
+                    for (int i = 0; i < tomatoes.Length; i++)
+                    {
+                        if (tomatoes[i] != null && tomatoes[i].gameObject.activeSelf)
+                        {
+                            consoleText.text = "Беру помидор...";
+                            yield return new WaitForSeconds(0.5f);
+
+                            tomatoes[i].gameObject.SetActive(false);
+                            tomatoesOnTable--;
+
+                            heldItemImage.gameObject.SetActive(true);
+                            heldItemImage.color = Color.red;
+                            hasTomato = true;
+                            foundTomato = true;
+
+                            consoleText.text = "Помидор взят!";
+                            yield return new WaitForSeconds(0.5f);
+                            break;
+                        }
+                    }
+
+                    if (!foundTomato)
+                    {
+                        consoleText.text = "Ошибка! На столе нет помидоров!";
+                    }
+                }
+
+                yield return new WaitForSeconds(0.3f);
             }
 
-            // Показываем в инвентаре
-            if (heldItemImage != null)
+            // Проверяем результат
+            if (tomatoesOnTable == 0 && !hasTomato)
             {
-                heldItemImage.gameObject.SetActive(true);
-                heldItemImage.color = Color.red;
+                consoleText.text = "Успех! Все помидоры доставлены!";
+                ShowSuccess();
             }
-
-            hasTomato = true;
-
-            // 3. Идём к холодильнику
-            consoleText.text = "Отношу помидор в холодильник...";
-            yield return StartCoroutine(MovePyBotTo(fridgeFront.anchoredPosition));
-
-            // 4. "Кладём" помидор в холодильник
-            consoleText.text = "Кладу помидор в холодильник...";
-            yield return new WaitForSeconds(0.5f);
-
-            // Прячем помидор из инвентаря
-            if (heldItemImage != null)
+            else
             {
-                heldItemImage.gameObject.SetActive(false);
+                consoleText.text = $"Ошибка! Осталось помидоров: {tomatoesOnTable}";
             }
-
-            hasTomato = false;
-
-            // 5. Успех
-            consoleText.text = "Успех! Полная программа выполнена!";
-            yield return new WaitForSeconds(0.5f);
-            ShowSuccess();
         }
         else
         {
@@ -281,32 +291,33 @@ public class Level5Manager : MonoBehaviour
         StopAllCoroutines();
         isExecuting = false;
         hasTomato = false;
+        tomatoesOnTable = 5;
 
-        // Возвращаем PyBot на стартовую позицию
         pyBot.anchoredPosition = startPoint.anchoredPosition;
 
-        // ОЧИЩАЕМ ПОЛЕ ВВОДА
         if (codeInput != null)
         {
             codeInput.text = "";
         }
 
-        // Возвращаем помидор на стол
-        if (tomatoOnTable != null)
+        if (tomatoes != null)
         {
-            tomatoOnTable.gameObject.SetActive(true);
+            foreach (Image tomato in tomatoes)
+            {
+                if (tomato != null)
+                {
+                    tomato.gameObject.SetActive(true);
+                }
+            }
         }
 
-        // Очищаем инвентарь
         if (heldItemImage != null)
         {
             heldItemImage.gameObject.SetActive(false);
         }
 
-        // Очищаем сообщения в консоли
         consoleText.text = "Сброшено. Введи код и нажми ВЫПОЛНИТЬ";
 
-        // Закрываем окна если они открыты
         if (currentInstructionPanel != null)
         {
             Destroy(currentInstructionPanel);
@@ -316,16 +327,14 @@ public class Level5Manager : MonoBehaviour
             Destroy(currentSuccessPanel);
         }
 
-        // Разблокируем кнопки
         runButton.interactable = true;
         codeInput.interactable = true;
     }
 
     void ShowSuccess()
     {
-        Debug.Log("=== УРОВЕНЬ 5 ПРОЙДЕН ===");
+        Debug.Log("=== УРОВЕНЬ 8 ПРОЙДЕН ===");
 
-        // Сохраняем прогресс
         SaveProgress();
 
         if (successPanelPrefab == null)
@@ -335,28 +344,23 @@ public class Level5Manager : MonoBehaviour
             return;
         }
 
-        // Создаём панель успеха
         currentSuccessPanel = Instantiate(successPanelPrefab);
         currentSuccessPanel.transform.SetParent(GameObject.Find("Canvas").transform, false);
 
-        // НАХОДИМ ВСЕ КНОПКИ В ПРЕФАБЕ
         Button[] successButtons = currentSuccessPanel.GetComponentsInChildren<Button>(true);
 
         if (successButtons.Length >= 3)
         {
-            // Кнопка 1: Следующий уровень
             Button nextLevelBtn = successButtons[0];
             Text nextText = nextLevelBtn.GetComponentInChildren<Text>();
-            if (nextText != null) nextText.text = "Уровень 6";
+            if (nextText != null) nextText.text = "Уровень 9";
             nextLevelBtn.onClick.AddListener(LoadNextLevel);
 
-            // Кнопка 2: На карту
             Button mapBtn = successButtons[1];
             Text mapText = mapBtn.GetComponentInChildren<Text>();
             if (mapText != null) mapText.text = "На карту";
             mapBtn.onClick.AddListener(GoToMap);
 
-            // Кнопка 3: Повторить
             Button retryBtn = successButtons[2];
             Text retryText = retryBtn.GetComponentInChildren<Text>();
             if (retryText != null) retryText.text = "Повторить";
@@ -364,33 +368,24 @@ public class Level5Manager : MonoBehaviour
         }
         else if (successButtons.Length >= 1)
         {
-            // Если только одна кнопка - делаем её "На карту"
             successButtons[0].onClick.AddListener(GoToMap);
         }
 
-        // Блокируем игровой процесс
         runButton.interactable = false;
         codeInput.interactable = false;
     }
 
     void SaveProgress()
     {
-        // Отмечаем уровень 5 как пройденный 
-        PlayerPrefs.SetInt("Level5_Passed", 1);
-
-        // Открываем уровень 6
-        PlayerPrefs.SetInt("Level6_Status", 1);
-
+        PlayerPrefs.SetInt("Level8_Passed", 1);
+        PlayerPrefs.SetInt("Level9_Status", 1);
         PlayerPrefs.Save();
-        Debug.Log("Прогресс сохранен: Level5 пройден, Level6 открыт");
+        Debug.Log("Прогресс сохранен: Level8 пройден, Level9 открыт");
     }
 
     void LoadNextLevel()
     {
-        Debug.Log("Загружаем следующий уровень...");
-
-        // Загружаем Level6 
-        SceneManager.LoadScene("Level6");
+        SceneManager.LoadScene("Level9");
     }
 
     void CloseSuccess()

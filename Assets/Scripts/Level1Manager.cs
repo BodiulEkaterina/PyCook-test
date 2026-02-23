@@ -17,6 +17,7 @@ public class Level1Manager : MonoBehaviour
     public Button runButton;
     public Button resetButton;
     public Button backToMapButton;
+    public Button instructionButton;
     public Text taskTitle;
 
     // ПРЕФАБЫ
@@ -26,8 +27,11 @@ public class Level1Manager : MonoBehaviour
     // НАСТРОЙКИ
     public float moveSpeed = 300f;
 
-    // ПРАВИЛЬНЫЙ КОД ДЛЯ УРОВНЯ
-    private string correctCode = "move_to(\"fridge\")";
+    // ПРАВИЛЬНЫЙ КОД ДЛЯ УРОВНЯ (в виде массива команд)
+    private string[] expectedCommands = new string[]
+    {
+        "move_to(\"fridge\")"
+    };
 
     // ПЕРЕМЕННЫЕ
     private bool isExecuting = false;
@@ -43,6 +47,7 @@ public class Level1Manager : MonoBehaviour
         runButton.onClick.AddListener(OnRunClick);
         resetButton.onClick.AddListener(OnResetClick);
         backToMapButton.onClick.AddListener(GoToMap);
+        instructionButton.onClick.AddListener(ShowInstruction);
 
         // Если нет точки перед холодильником, используем сам холодильник
         if (fridgeFront == null)
@@ -94,21 +99,14 @@ public class Level1Manager : MonoBehaviour
 
         foreach (Text text in allTexts)
         {
-            // Пропускаем текст на кнопках
             if (text.transform.parent != null && text.transform.parent.GetComponent<Button>() != null)
-            {
                 continue;
-            }
 
             string textName = text.gameObject.name.ToLower();
-
-            if (textName.Contains("title"))
+            
+            if (textName.Contains("main") || textName.Contains("instruction"))
             {
-                text.text = "УРОВЕНЬ 1: ОСНОВЫ ДВИЖЕНИЯ";
-            }
-            else if (textName.Contains("main") || textName.Contains("instruction"))
-            {
-                text.text = "Используй команду move_to(), чтобы PyBot двигался к указанному месту.\n\nPyBot подойдет к холодильнику и остановится перед ним.\n\nПиши точно как в примере.";
+                text.text = "Используй команду move_to(), чтобы PyBot двигался к указанному месту.\n\nPyBot подойдет к холодильнику и остановится перед ним.\n\nПиши опираясь на пример.";
             }
             else if (textName.Contains("example") || textName.Contains("code"))
             {
@@ -183,10 +181,12 @@ public class Level1Manager : MonoBehaviour
 
         yield return new WaitForSeconds(0.5f);
 
-        string code = codeInput.text.Trim(); // Убираем лишние пробелы
+        string code = codeInput.text;
 
-        // ТОЧНАЯ ПРОВЕРКА КОДА ДЛЯ УРОВНЯ 1
-        if (code == correctCode)
+        // ИСПОЛЬЗУЕМ ИНТЕРПРЕТАТОР
+        string validationResult = PyBotInterpreter.ValidateBasicCode(code, expectedCommands);
+
+        if (validationResult == "OK")
         {
             consoleText.text = "Код правильный! Иду к холодильнику...";
             yield return new WaitForSeconds(0.5f);
@@ -200,7 +200,7 @@ public class Level1Manager : MonoBehaviour
         }
         else
         {
-            consoleText.text = "Ошибка! Попробуй ещё раз!";
+            consoleText.text = validationResult;
         }
 
         isExecuting = false;
@@ -298,7 +298,6 @@ public class Level1Manager : MonoBehaviour
         }
         else if (successButtons.Length >= 1)
         {
-            // Если только одна кнопка - делаем её "На карту"
             successButtons[0].onClick.AddListener(GoToMap);
         }
 
@@ -309,21 +308,14 @@ public class Level1Manager : MonoBehaviour
 
     void SaveProgress()
     {
-        // Отмечаем уровень 1 как пройденный
         PlayerPrefs.SetInt("Level1_Passed", 1);
-
-        // Открываем уровень 2
-        PlayerPrefs.SetInt("Level2_Status", 1); // 1 = открыт
-
+        PlayerPrefs.SetInt("Level2_Status", 1);
         PlayerPrefs.Save();
         Debug.Log("Прогресс сохранен: Level1 пройден, Level2 открыт");
     }
 
     void LoadNextLevel()
     {
-        Debug.Log("Загружаем следующий уровень...");
-
-        // Загружаем Level2
         SceneManager.LoadScene("Level2");
     }
 

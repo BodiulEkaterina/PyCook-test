@@ -21,6 +21,7 @@ public class Level3Manager : MonoBehaviour
     public Button runButton;
     public Button resetButton;
     public Button backToMapButton;
+    public Button instructionButton;
     public Text taskTitle;
 
     // ПРЕФАБЫ
@@ -31,7 +32,11 @@ public class Level3Manager : MonoBehaviour
     public float moveSpeed = 300f;
 
     // ПРАВИЛЬНЫЙ КОД ДЛЯ УРОВНЯ
-    private string correctCode = "move_to(\"table\")\ntake(\"tomato\")";
+    private string[] expectedCommands = new string[]
+    {
+        "move_to(\"table\")",
+        "take(\"tomato\")"
+    };
 
     // ПЕРЕМЕННЫЕ
     private bool isExecuting = false;
@@ -44,24 +49,21 @@ public class Level3Manager : MonoBehaviour
     {
         Debug.Log("Level 3 Manager запущен");
 
-        // Назначаем обработчики кнопок
         runButton.onClick.AddListener(OnRunClick);
         resetButton.onClick.AddListener(OnResetClick);
         backToMapButton.onClick.AddListener(GoToMap);
+        instructionButton.onClick.AddListener(ShowInstruction);
 
-        // Скрываем инвентарь
         if (heldItemImage != null)
         {
             heldItemImage.gameObject.SetActive(false);
         }
 
-        // Если нет точки перед столом, используем сам стол
         if (tableFront == null)
         {
             tableFront = table;
         }
 
-        // Показываем инструкцию
         ShowInstruction();
     }
 
@@ -73,11 +75,9 @@ public class Level3Manager : MonoBehaviour
             return;
         }
 
-        // Создаём панель инструкции
         currentInstructionPanel = Instantiate(instructionPanelPrefab);
         currentInstructionPanel.transform.SetParent(GameObject.Find("Canvas").transform, false);
 
-        // НАХОДИМ КНОПКУ СТАРТА
         Button startButton = FindButtonInChildren(currentInstructionPanel, "StartButton");
         if (startButton == null)
         {
@@ -86,40 +86,30 @@ public class Level3Manager : MonoBehaviour
 
         if (startButton != null)
         {
-            // Настраиваем текст кнопки
             Text buttonText = startButton.GetComponentInChildren<Text>();
             if (buttonText != null)
             {
                 buttonText.text = "НАЧАТЬ";
             }
 
-            // Назначаем действие для кнопки
             startButton.onClick.RemoveAllListeners();
             startButton.onClick.AddListener(() => {
                 CloseInstruction();
             });
         }
 
-        // ЗАПОЛНЯЕМ ТЕКСТОВЫЕ ПОЛЯ
         Text[] allTexts = currentInstructionPanel.GetComponentsInChildren<Text>(true);
 
         foreach (Text text in allTexts)
         {
-            // Пропускаем текст на кнопках
             if (text.transform.parent != null && text.transform.parent.GetComponent<Button>() != null)
-            {
                 continue;
-            }
 
             string textName = text.gameObject.name.ToLower();
 
-            if (textName.Contains("title"))
+            if (textName.Contains("main") || textName.Contains("instruction"))
             {
-                text.text = "УРОВЕНЬ 3: ПОСЛЕДОВАТЕЛЬНОСТЬ";
-            }
-            else if (textName.Contains("main") || textName.Contains("instruction"))
-            {
-                text.text = "Команды выполняются по порядку. Сначала подойди к столу, потом возьми предмет.\n\nОбрати внимание на правильный порядок команд.\n\nПиши точно как в примере.";
+                text.text = "Команды выполняются по порядку. Сначала подойди к столу, потом возьми предмет.\n\nОбрати внимание на правильный порядок команд.\n\nПиши опираясь на пример.";
             }
             else if (textName.Contains("example") || textName.Contains("code"))
             {
@@ -127,7 +117,6 @@ public class Level3Manager : MonoBehaviour
             }
         }
 
-        // ЗАПОЛНЯЕМ ПОЛЯ ВВОДА
         InputField[] allInputFields = currentInstructionPanel.GetComponentsInChildren<InputField>(true);
         foreach (InputField inputField in allInputFields)
         {
@@ -137,7 +126,6 @@ public class Level3Manager : MonoBehaviour
             }
         }
 
-        // Блокируем игровой процесс
         runButton.interactable = false;
         codeInput.interactable = false;
         resetButton.interactable = false;
@@ -163,7 +151,6 @@ public class Level3Manager : MonoBehaviour
             Destroy(currentInstructionPanel);
         }
 
-        // Разблокируем игровой процесс
         runButton.interactable = true;
         codeInput.interactable = true;
         resetButton.interactable = true;
@@ -194,29 +181,26 @@ public class Level3Manager : MonoBehaviour
 
         yield return new WaitForSeconds(0.5f);
 
-        string code = codeInput.text.Trim(); // Убираем лишние пробелы
+        string code = codeInput.text;
 
-        // ТОЧНАЯ ПРОВЕРКА КОДА ДЛЯ УРОВНЯ 3
-        if (code == correctCode)
+        string validationResult = PyBotInterpreter.ValidateBasicCode(code, expectedCommands);
+
+        if (validationResult == "OK")
         {
             consoleText.text = "Код правильный! Выполняю последовательность...";
             yield return new WaitForSeconds(1f);
 
-            // 1. Идём к столу
             consoleText.text = "Иду к столу...";
             yield return StartCoroutine(MovePyBotTo(tableFront.anchoredPosition));
 
-            // 2. Берём помидор
             consoleText.text = "Беру помидор...";
             yield return new WaitForSeconds(0.5f);
 
-            // Прячем помидор со стола
             if (tomatoOnTable != null)
             {
                 tomatoOnTable.gameObject.SetActive(false);
             }
 
-            // Показываем в инвентаре
             if (heldItemImage != null)
             {
                 heldItemImage.gameObject.SetActive(true);
@@ -225,14 +209,13 @@ public class Level3Manager : MonoBehaviour
 
             hasTomato = true;
 
-            // 3. Успех
             consoleText.text = "Успех! Последовательность выполнена!";
             yield return new WaitForSeconds(0.5f);
             ShowSuccess();
         }
         else
         {
-            consoleText.text = "Ошибка! Попробуй ещё раз!";
+            consoleText.text = validationResult;
         }
 
         isExecuting = false;
@@ -261,31 +244,25 @@ public class Level3Manager : MonoBehaviour
         isExecuting = false;
         hasTomato = false;
 
-        // Возвращаем PyBot на стартовую позицию
         pyBot.anchoredPosition = startPoint.anchoredPosition;
 
-        // ОЧИЩАЕМ ПОЛЕ ВВОДА
         if (codeInput != null)
         {
             codeInput.text = "";
         }
 
-        // Возвращаем помидор на стол
         if (tomatoOnTable != null)
         {
             tomatoOnTable.gameObject.SetActive(true);
         }
 
-        // Очищаем инвентарь
         if (heldItemImage != null)
         {
             heldItemImage.gameObject.SetActive(false);
         }
 
-        // Очищаем сообщения в консоли
         consoleText.text = "Сброшено. Введи команды и нажми ВЫПОЛНИТЬ";
 
-        // Закрываем окна если они открыты
         if (currentInstructionPanel != null)
         {
             Destroy(currentInstructionPanel);
@@ -295,7 +272,6 @@ public class Level3Manager : MonoBehaviour
             Destroy(currentSuccessPanel);
         }
 
-        // Разблокируем кнопки
         runButton.interactable = true;
         codeInput.interactable = true;
     }
@@ -304,7 +280,6 @@ public class Level3Manager : MonoBehaviour
     {
         Debug.Log("=== УРОВЕНЬ 3 ПРОЙДЕН ===");
 
-        // Сохраняем прогресс
         SaveProgress();
 
         if (successPanelPrefab == null)
@@ -314,28 +289,23 @@ public class Level3Manager : MonoBehaviour
             return;
         }
 
-        // Создаём панель успеха
         currentSuccessPanel = Instantiate(successPanelPrefab);
         currentSuccessPanel.transform.SetParent(GameObject.Find("Canvas").transform, false);
 
-        // НАХОДИМ ВСЕ КНОПКИ В ПРЕФАБЕ
         Button[] successButtons = currentSuccessPanel.GetComponentsInChildren<Button>(true);
 
         if (successButtons.Length >= 3)
         {
-            // Кнопка 1: Следующий уровень
             Button nextLevelBtn = successButtons[0];
             Text nextText = nextLevelBtn.GetComponentInChildren<Text>();
             if (nextText != null) nextText.text = "Уровень 4";
             nextLevelBtn.onClick.AddListener(LoadNextLevel);
 
-            // Кнопка 2: На карту
             Button mapBtn = successButtons[1];
             Text mapText = mapBtn.GetComponentInChildren<Text>();
             if (mapText != null) mapText.text = "На карту";
             mapBtn.onClick.AddListener(GoToMap);
 
-            // Кнопка 3: Повторить
             Button retryBtn = successButtons[2];
             Text retryText = retryBtn.GetComponentInChildren<Text>();
             if (retryText != null) retryText.text = "Повторить";
@@ -343,32 +313,23 @@ public class Level3Manager : MonoBehaviour
         }
         else if (successButtons.Length >= 1)
         {
-            // Если только одна кнопка - делаем её "На карту"
             successButtons[0].onClick.AddListener(GoToMap);
         }
 
-        // Блокируем игровой процесс
         runButton.interactable = false;
         codeInput.interactable = false;
     }
 
     void SaveProgress()
     {
-        // Отмечаем уровень 3 как пройденный
         PlayerPrefs.SetInt("Level3_Passed", 1);
-
-        // Открываем уровень 4
-        PlayerPrefs.SetInt("Level4_Status", 1); // 1 = открыт
-
+        PlayerPrefs.SetInt("Level4_Status", 1);
         PlayerPrefs.Save();
         Debug.Log("Прогресс сохранен: Level3 пройден, Level4 открыт");
     }
 
     void LoadNextLevel()
     {
-        Debug.Log("Загружаем следующий уровень...");
-
-        // Загружаем Level4
         SceneManager.LoadScene("Level4");
     }
 
